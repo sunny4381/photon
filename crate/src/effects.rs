@@ -799,12 +799,8 @@ pub fn kuwahara(photon_image: &mut PhotonImage, num: u32) {
 
     let mut work_pixels: Vec<(u8, u8, u8, f64)> = vec![(0, 0, 0, 0.0); ((width - num) * (height - num)) as usize];
     let work_pixel_at = |x: u32, y: u32| -> usize {
-        if x >= (width - num) {
-            panic!("width {} is out of range (max = {})", x, width);
-        };
-        if y >= (height - num) {
-            panic!("height {} is out of range (max = {})", y, height);
-        };
+        assert!(x < width - num, "width {} is out of range (max = {})", x, width);
+        assert!(y < height - num, "height {} is out of range (max = {})", y, height);
         (y * (width - num) + x) as usize
     };
 
