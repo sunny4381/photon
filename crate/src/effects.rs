@@ -846,14 +846,15 @@ pub fn kuwahara(photon_image: &mut PhotonImage, num: u32) {
             None
         };
 
-        let pixel = min_tuple(min_tuple(top_left, top_right), min_tuple(bottom_left, bottom_right)).expect("unable to choose pixel");
+        let min = min_tuple(min_tuple(top_left, top_right), min_tuple(bottom_left, bottom_right));
+        if let Some(pixel) = min {
+            let mut px = img.get_pixel(x, y);
+            px.data[0] = pixel.0;   // r
+            px.data[1] = pixel.1;   // g
+            px.data[2] = pixel.2;   // b
 
-        let mut px = img.get_pixel(x, y);
-        px.data[0] = pixel.0;   // r
-        px.data[1] = pixel.1;   // g
-        px.data[2] = pixel.2;   // b
-
-        img.put_pixel(x, y, px);
+            img.put_pixel(x, y, px);
+        }
     }
 
     let raw_pixels = img.raw_pixels();
