@@ -17,7 +17,7 @@ use crate::iter::ImageIterator;
 ///
 /// # Arguments
 /// * `img` - A PhotonImage that contains a view into the image.
-/// * `offset` - The offset is added to the pixels in the image.  
+/// * `offset` - The offset is added to the pixels in the image.
 /// # Example
 ///
 /// ```
@@ -116,7 +116,7 @@ pub fn offset_blue(img: &mut PhotonImage, offset_amt: u32) {
 ///
 /// # Arguments
 /// * `img` - A PhotonImage that contains a view into the image.
-/// * `offset` - The offset is added to the pixels in the image.  
+/// * `offset` - The offset is added to the pixels in the image.
 /// # Example
 ///
 /// ```
@@ -752,3 +752,110 @@ pub fn vertical_strips(mut photon_image: &mut PhotonImage, num_strips: u8) {
 //     }
 //     return img;
 // }
+
+#[wasm_bindgen]
+pub fn kuwahara(photon_image: &mut PhotonImage, num: u32) {
+    let mut img = helpers::dyn_image_from_raw(&photon_image);
+    let (width, height) = img.dimensions();
+
+    let calc_avg = |x: u32, y: u32| -> Rgb {
+        let mut sum_r: u64 = 0;
+        let mut sum_g: u64 = 0;
+        let mut sum_b: u64 = 0;
+
+        for (i, j) in ImageIterator::with_dimension(&(num + 1, num + 1)) {
+            let px = img.get_pixel(x + i, y + j);
+            sum_r += px.data[0] as u64;
+            sum_g += px.data[1] as u64;
+            sum_b += px.data[2] as u64;
+        }
+
+        let avg_r: f64 = sum_r as f64 / (num + 1) as f64 / (num + 1) as f64;
+        let avg_g: f64 = sum_g as f64 / (num + 1) as f64 / (num + 1) as f64;
+        let avg_b: f64 = sum_b as f64 / (num + 1) as f64 / (num + 1) as f64;
+        Rgb { r: avg_r as u8, g: avg_g as u8, b: avg_b as u8 }
+    };
+
+    let calc_var = |x: u32, y: u32, avg: &Rgb| -> f64 {
+        let mut sum_r: f64 = 0.0;
+        let mut sum_g: f64 = 0.0;
+        let mut sum_b: f64 = 0.0;
+
+        for i in 0..(num + 1) {
+            for j in 0..(num + 1) {
+                let px = img.get_pixel(x + i, y + j);
+                sum_r += (px.data[0] as f64 - avg.r as f64).powf(2.0);
+                sum_g += (px.data[1] as f64 - avg.g as f64).powf(2.0);
+                sum_b += (px.data[2] as f64 - avg.b as f64).powf(2.0);
+            }
+        }
+
+        let var_r = sum_r / (num + 1) as f64 / (num + 1) as f64;
+        let var_g = sum_g / (num + 1) as f64 / (num + 1) as f64;
+        let var_b = sum_b / (num + 1) as f64 / (num + 1) as f64;
+
+        var_r + var_g + var_b
+    };
+
+    let mut work_pixels: Vec<(u8, u8, u8, f64)> = vec![(0, 0, 0, 0.0); ((width - num) * (height - num)) as usize];
+    let work_pixel_at = |x: u32, y: u32| -> usize {
+        if x >= (width - num) {
+            panic!("width {} is out of range (max = {})", x, width);
+        };
+        if y >= (height - num) {
+            panic!("height {} is out of range (max = {})", y, height);
+        };
+        (y * (width - num) + x) as usize
+    };
+
+    for (x, y) in ImageIterator::with_dimension(&(width - num, height - num)) {
+        let avg = calc_avg(x, y);
+        let var = calc_var(x, y, &avg);
+
+        work_pixels[work_pixel_at(x, y)] = (avg.r, avg.g, avg.b, var);
+    }
+
+    let min_tuple = |lhs: Option<(u8, u8, u8, f64)>, rhs: Option<(u8, u8, u8, f64)>| -> Option<(u8, u8, u8, f64)> {
+        match (lhs, rhs) {
+            (Some(x), Some(y)) => if x.3 <= y.3 { Some(x) } else { Some(y) },
+            (Some(x), None) => Some(x),
+            (None, Some(y)) => Some(y),
+            _ => None
+        }
+    };
+
+    for (x, y) in ImageIterator::with_dimension(&img.dimensions()) {
+        let top_left = if x >= num && y >= num {
+            Some(work_pixels[work_pixel_at(x - num, y - num)])
+        } else {
+            None
+        };
+        let top_right = if x < width - num && y >= num {
+            Some(work_pixels[work_pixel_at(x, y - num)])
+        } else {
+            None
+        };
+        let bottom_left = if x >= num && y < height - num {
+            Some(work_pixels[work_pixel_at(x - num, y)])
+        } else {
+            None
+        };
+        let bottom_right = if x < width - num && y < height - num {
+            Some(work_pixels[work_pixel_at(x, y)])
+        } else {
+            None
+        };
+
+        let pixel = min_tuple(min_tuple(top_left, top_right), min_tuple(bottom_left, bottom_right)).expect("unable to choose pixel");
+
+        let mut px = img.get_pixel(x, y);
+        px.data[0] = pixel.0;   // r
+        px.data[1] = pixel.1;   // g
+        px.data[2] = pixel.2;   // b
+
+        img.put_pixel(x, y, px);
+    }
+
+    let raw_pixels = img.raw_pixels();
+    photon_image.raw_pixels = raw_pixels;
+}
