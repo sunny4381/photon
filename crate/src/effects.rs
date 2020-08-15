@@ -757,6 +757,10 @@ pub fn vertical_strips(mut photon_image: &mut PhotonImage, num_strips: u8) {
 pub fn kuwahara(photon_image: &mut PhotonImage, num: u32) {
     let mut img = helpers::dyn_image_from_raw(&photon_image);
     let (width, height) = img.dimensions();
+    if width < num * 2 + 1 || height < num * 2 + 1 {
+        // too small to process
+        return;
+    }
 
     let calc_avg = |x: u32, y: u32| -> Rgb {
         let mut sum_r: u64 = 0;
