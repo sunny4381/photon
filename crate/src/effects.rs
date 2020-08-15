@@ -763,7 +763,7 @@ pub fn kuwahara(photon_image: &mut PhotonImage, num: u32) {
         let mut sum_g: u64 = 0;
         let mut sum_b: u64 = 0;
 
-        for (i, j) in ImageIterator::with_dimension(&(num + 1, num + 1)) {
+        for (i, j) in ImageIterator::new(num + 1, num + 1) {
             let px = img.get_pixel(x + i, y + j);
             sum_r += px.data[0] as u64;
             sum_g += px.data[1] as u64;
@@ -808,7 +808,7 @@ pub fn kuwahara(photon_image: &mut PhotonImage, num: u32) {
         (y * (width - num) + x) as usize
     };
 
-    for (x, y) in ImageIterator::with_dimension(&(width - num, height - num)) {
+    for (x, y) in ImageIterator::new(width - num, height - num) {
         let avg = calc_avg(x, y);
         let var = calc_var(x, y, &avg);
 
@@ -824,7 +824,7 @@ pub fn kuwahara(photon_image: &mut PhotonImage, num: u32) {
         }
     };
 
-    for (x, y) in ImageIterator::with_dimension(&img.dimensions()) {
+    for (x, y) in ImageIterator::new(width, height) {
         let top_left = if x >= num && y >= num {
             Some(work_pixels[work_pixel_at(x - num, y - num)])
         } else {
