@@ -173,6 +173,7 @@ import("../../crate/pkg").then(module => {
                       "watermark": function() {return module.watermark(rust_image, watermark_img, 10, 30)},
                       "text": function() {return module.draw_text(rust_image, "welcome to WebAssembly", 10, 20)},
                       "text_border": function() {return module.draw_text_with_border(rust_image, "welcome to the edge", 10, 20)},
+                      "kuwahara": function() {return module.kuwahara(rust_image, 7)},
                       "test": function() {return module.filter(rust_image, "rosetint")},
                     };
 
